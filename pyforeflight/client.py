@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from typing import Literal, Optional
 
 import requests
@@ -7,6 +8,9 @@ import requests
 from .exceptions import APIException, AuthenticationException
 
 TRACKLOG_FORMAT = Literal["gpx", "kml", "kml-filtered", "csv"]
+
+# ForeFlight rejects tracklog page sizes above 100 with HTTP 400.
+MAX_TRACKLOG_PAGE_SIZE = 100
 
 USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -45,6 +49,13 @@ class Client(object):
 
     ff_baseurl = "https://plan.foreflight.com/"
 
+    # Transient-failure retry policy. ForeFlight intermittently returns 5xx and
+    # rate-limits bursts of requests; retrying with exponential backoff keeps
+    # long operations (e.g. paging through hundreds of tracklogs) reliable.
+    max_retries = 3
+    retry_backoff = 1.0
+    retry_statuses = frozenset({429, 500, 502, 503, 504})
+
     def __init__(self):
         self.ff_session = requests.Session()
         self.ff_session.headers.update(
@@ -70,21 +81,52 @@ class Client(object):
         if xsrf_cookie:
             self.ff_session.headers.update({"X-XSRFToken": xsrf_cookie})
 
+    def _retry_delay(self, attempt: int, response: Optional[requests.Response] = None) -> float:
+        """Backoff before the next retry, honouring ``Retry-After`` if present."""
+        if response is not None:
+            retry_after = response.headers.get("Retry-After")
+            if retry_after:
+                try:
+                    return float(retry_after)
+                except ValueError:
+                    pass
+        return self.retry_backoff * (2 ** attempt)
+
     def _request(self, method: str, path: str, **kwargs) -> requests.Response:
         """
         Issue an HTTP request against the Foreflight base URL and raise an
         :class:`APIException` on any non-2xx response.
+
+        Transient failures (connection errors and the status codes in
+        :attr:`retry_statuses`) are retried up to :attr:`max_retries` times with
+        exponential backoff.
         """
         url = self.ff_baseurl + path
         logging.debug("%s %s params=%s", method, url, kwargs.get("params"))
-        r = self.ff_session.request(method, url, **kwargs)
-        try:
-            r.raise_for_status()
-        except requests.HTTPError as e:
-            raise APIException(
-                f"{method} {url} failed ({r.status_code}): {r.text}"
-            ) from e
-        return r
+        for attempt in range(self.max_retries + 1):
+            try:
+                r = self.ff_session.request(method, url, **kwargs)
+            except requests.RequestException as e:
+                if attempt < self.max_retries:
+                    logging.warning("%s %s connection error (%s); retry %d/%d",
+                                    method, url, e, attempt + 1, self.max_retries)
+                    time.sleep(self._retry_delay(attempt))
+                    continue
+                raise APIException(f"{method} {url} failed: {e}") from e
+
+            if r.status_code in self.retry_statuses and attempt < self.max_retries:
+                logging.warning("%s %s -> %d; retry %d/%d", method, url,
+                                r.status_code, attempt + 1, self.max_retries)
+                time.sleep(self._retry_delay(attempt, r))
+                continue
+
+            try:
+                r.raise_for_status()
+            except requests.HTTPError as e:
+                raise APIException(
+                    f"{method} {url} failed ({r.status_code}): {r.text}"
+                ) from e
+            return r
 
     def _get(self, path: str, params: Optional[dict] = None) -> requests.Response:
         return self._request("GET", path, params=params)
@@ -570,25 +612,37 @@ class Client(object):
     # Tracklogs
     # ------------------------------------------------------------------ #
 
-    def get_tracklogs_available(self, page: int = 0, page_size: int = 20) -> list:
+    def get_tracklogs_available(
+        self, page: int = 0, page_size: int = MAX_TRACKLOG_PAGE_SIZE
+    ) -> list:
         """
         Return one page of available tracklog metadata.
 
         :param page: Zero-based page index.
-        :param page_size: Number of tracklogs per page.
+        :param page_size: Number of tracklogs per page. Clamped to
+            :data:`MAX_TRACKLOG_PAGE_SIZE` (100); larger values are rejected by
+            ForeFlight with HTTP 400.
         """
+        page_size = min(page_size, MAX_TRACKLOG_PAGE_SIZE)
         params = {"pageSize": page_size, "page": page}
         return self._get("tracklogs/api/tracklogs", params=params).json()["tracklogs"]
 
     def get_all_tracklogs_available(self) -> list:
-        """Page through and return metadata for every available tracklog."""
+        """Page through and return metadata for every available tracklog.
+
+        Pages in chunks of :data:`MAX_TRACKLOG_PAGE_SIZE` and stops on the first
+        short (or empty) page, so a library with hundreds of tracklogs needs
+        only a handful of requests.
+        """
         all_tracklogs = []
         page = 0
         while True:
-            current_page = self.get_tracklogs_available(page=page)
-            if not current_page:
-                break
+            current_page = self.get_tracklogs_available(
+                page=page, page_size=MAX_TRACKLOG_PAGE_SIZE
+            )
             all_tracklogs.extend(current_page)
+            if len(current_page) < MAX_TRACKLOG_PAGE_SIZE:
+                break
             page += 1
         return all_tracklogs
 
