@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "foreflight"
+version = "0.1.0"
+description = "Python client for the ForeFlight web (logbook/tracklogs) and Dispatch public APIs"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Unicornlines", email = "hello@unicornlines.de" }]
+keywords = ["foreflight", "aviation", "logbook", "dispatch", "tracklog"]
+dependencies = ["requests"]
+
+[project.urls]
+Homepage = "https://github.com/unicornlines/ForeFlight"
+Repository = "https://github.com/unicornlines/ForeFlight"
+
+[tool.setuptools]
+packages = ["Foreflight"]
