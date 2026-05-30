@@ -32,7 +32,7 @@ class Client(object):
 
     Example::
 
-        from Foreflight import Client
+        from pyforeflight import Client
 
         ff = Client()
         ff.login("pilot@example.com", "password")

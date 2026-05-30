@@ -1,25 +1,25 @@
-# ForeFlight
+# pyforeflight
 
 Python client for ForeFlight's APIs:
 
-- **Web client** (`Foreflight.Client`) — username/password session against
+- **Web client** (`pyforeflight.Client`) — username/password session against
   `plan.foreflight.com`, covering the logbook (entries, aircraft, persons,
   custom fields, reports, import/export, CFI signatures) and tracklogs.
-- **Dispatch client** (`Foreflight.DispatchClient`) — API-key access to the
+- **Dispatch client** (`pyforeflight.DispatchClient`) — API-key access to the
   documented Dispatch REST API at `public-api.foreflight.com` (flights,
   performance, briefings, files, quotation, schedules, and more).
 
 ## Installation
 
 ```bash
-pip install git+https://github.com/unicornlines/ForeFlight.git
+pip install git+https://github.com/unicornlines/pyforeflight.git
 ```
 
 Or for local development:
 
 ```bash
-git clone https://github.com/unicornlines/ForeFlight.git
-cd ForeFlight
+git clone https://github.com/unicornlines/pyforeflight.git
+cd pyforeflight
 pip install -e .
 ```
 
@@ -28,7 +28,7 @@ Requires Python 3.9+ and `requests`.
 ## Web client
 
 ```python
-from Foreflight import Client
+from pyforeflight import Client
 
 ff = Client()
 ff.login("pilot@example.com", "password")
@@ -56,13 +56,13 @@ SSO accounts are not supported (login raises `AuthenticationException`).
 A read-only check that exercises the main endpoints:
 
 ```bash
-FF_USERNAME=... FF_PASSWORD=... python -m Foreflight.smoke_test
+FF_USERNAME=... FF_PASSWORD=... python -m pyforeflight.smoke_test
 ```
 
 ## Dispatch client
 
 ```python
-from Foreflight import DispatchClient
+from pyforeflight import DispatchClient
 
 d = DispatchClient(api_key="...")          # optional: vendor_id="..."
 

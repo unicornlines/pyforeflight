@@ -4,7 +4,7 @@ Read-only smoke test for the Foreflight web client.
 Logs in with FF_USERNAME / FF_PASSWORD from the environment and exercises the
 read endpoints, printing a short summary. Performs no writes or deletions.
 
-    FF_USERNAME=... FF_PASSWORD=... python -m Foreflight.smoke_test
+    FF_USERNAME=... FF_PASSWORD=... python -m pyforeflight.smoke_test
 """
 
 import logging

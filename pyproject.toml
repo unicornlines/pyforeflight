@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "foreflight"
+name = "pyforeflight"
 version = "0.1.0"
 description = "Python client for the ForeFlight web (logbook/tracklogs) and Dispatch public APIs"
 readme = "README.md"
@@ -14,8 +14,8 @@ keywords = ["foreflight", "aviation", "logbook", "dispatch", "tracklog"]
 dependencies = ["requests"]
 
 [project.urls]
-Homepage = "https://github.com/unicornlines/ForeFlight"
-Repository = "https://github.com/unicornlines/ForeFlight"
+Homepage = "https://github.com/unicornlines/pyforeflight"
+Repository = "https://github.com/unicornlines/pyforeflight"
 
 [tool.setuptools]
-packages = ["Foreflight"]
+packages = ["pyforeflight"]

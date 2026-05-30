@@ -13,7 +13,7 @@ class DispatchClient(object):
     ForeFlight Dispatch public API client.
 
     Wraps the documented Dispatch REST API at ``public-api.foreflight.com``.
-    Unlike the web :class:`~Foreflight.client.Client` (which uses a username /
+    Unlike the web :class:`~pyforeflight.client.Client` (which uses a username /
     password session), Dispatch authenticates with an API key sent in the
     ``x-api-key`` header. Manage keys in the Dispatch API Keys console.
 
@@ -22,7 +22,7 @@ class DispatchClient(object):
 
     Example::
 
-        from Foreflight import DispatchClient
+        from pyforeflight import DispatchClient
 
         d = DispatchClient(api_key="...")
         for flight in d.get_flights(from_date="2026-01-01", to_date="2026-02-01"):
